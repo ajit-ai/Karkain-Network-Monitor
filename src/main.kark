@@ -1,3 +1,5 @@
+import reachability
+
 // Karkain Network Monitor - first functional slice.
 // Records supplied probe results and computes real availability from them.
 // NO real network measurement is performed: samples come from commands.dat.
@@ -126,4 +128,5 @@ func main() {
     persist("data/state.dat", state)
     persist("data/report.dat", split(report_text, "\n"))
     print("NETWORK_MONITOR_OK targets=" + str(count_type(state, "TARGET")) + " samples=" + str(count_type(state, "SAMPLE")))
+    reachability.probe_reachability()
 }

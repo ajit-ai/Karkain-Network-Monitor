@@ -1,0 +1,75 @@
+// Karkain Network Monitor - Round 2 real reachability measurement.
+// Opens local listeners, then probes every target/port from data/probes.dat
+// with net_connect(). fd >= 0 means reachable; otherwise net_last_error() is
+// recorded. Availability is computed from the actual probe results.
+// Round 1 sample/availability workflow is untouched.
+
+func reach_persist(path, lines) {
+    let out = ""
+    let i = 0
+    while (i < len(lines)) {
+        out = out + lines[i] + "\n"
+        i = i + 1
+    }
+    writeFile(path, out)
+}
+
+public func probe_reachability() {
+    let cfg = split(readFile("data/probes.dat"), "\n")
+    let listeners = []
+    let targets = []
+    let i = 0
+    while (i < len(cfg)) {
+        let line = trim(cfg[i])
+        if (line != "") {
+            let f = split(line, "|")
+            if (f[0] == "LISTEN") {
+                let fd = net_listen(f[1], int(f[2]))
+                print("REACH_LISTEN addr=" + f[1] + ":" + f[2] + " fd=" + str(fd))
+                if (fd >= 0) { push(listeners, fd) }
+            }
+            if (f[0] == "PROBE") {
+                push(targets, line)
+            }
+        }
+        i = i + 1
+    }
+
+    let samples = []
+    let ok_count = 0
+    let j = 0
+    while (j < len(targets)) {
+        let f = split(targets[j], "|")
+        let name = f[1]
+        let host = f[2]
+        let port = int(f[3])
+        let fd = net_connect(host, port)
+        let reachable = 0
+        let err = ""
+        if (fd >= 0) {
+            reachable = 1
+            ok_count = ok_count + 1
+            net_close(fd)
+        } else {
+            err = net_last_error()
+        }
+        let rec = "SAMPLE|" + name + "|" + str(reachable) + "|0"
+        push(samples, rec)
+        print("PROBE " + name + " " + host + ":" + f[3] + " reachable=" + str(reachable) + " err=" + err)
+        j = j + 1
+    }
+
+    let total = len(targets)
+    let availability = 0
+    if (total > 0) {
+        availability = (ok_count * 100) / total
+    }
+    reach_persist("data/probe_results.dat", samples)
+    print("REACHABILITY_OK targets=" + str(total) + " reachable=" + str(ok_count) + " availability=" + str(availability) + "%")
+
+    let k = 0
+    while (k < len(listeners)) {
+        net_close(listeners[k])
+        k = k + 1
+    }
+}

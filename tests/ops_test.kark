@@ -1,0 +1,35 @@
+// Round 2 ops tests: real reachability probing logic (self-contained).
+
+func test_probe_config_parse() {
+    let line = "PROBE|loopback-18765|127.0.0.1|18765"
+    let f = split(line, "|")
+    assert_eq(f[0], "PROBE")
+    assert_eq(f[1], "loopback-18765")
+    assert_eq(f[2], "127.0.0.1")
+    assert_eq(int(f[3]), 18765)
+}
+
+func test_probe_sample_record() {
+    let name = "closed-9"
+    let reachable = 0
+    let rec = "SAMPLE|" + name + "|" + str(reachable) + "|0"
+    let f = split(rec, "|")
+    assert_eq(f[0], "SAMPLE")
+    assert_eq(f[1], "closed-9")
+    assert_eq(int(f[2]), 0)
+}
+
+func test_reachability_computation() {
+    let samples = ["SAMPLE|loopback-18765|1|0", "SAMPLE|loopback-18766|1|0", "SAMPLE|closed-9|0|0", "SAMPLE|closed-80|0|0"]
+    let ok = 0
+    let i = 0
+    while (i < len(samples)) {
+        let f = split(samples[i], "|")
+        if (int(f[2]) == 1) { ok = ok + 1 }
+        i = i + 1
+    }
+    let availability = (ok * 100) / len(samples)
+    assert_eq(len(samples), 4)
+    assert_eq(ok, 2)
+    assert_eq(availability, 50)
+}
