@@ -1,0 +1,12 @@
+TARGET web example.com:80
+TARGET api api.example.com:443
+SAMPLE web ok=1 latency=12
+SAMPLE web ok=1 latency=15
+SAMPLE web ok=0 latency=0
+SAMPLE api ok=1 latency=20
+SAMPLE api ok=1 latency=22
+SAMPLE api ok=1 latency=19
+SAMPLE api ok=0 latency=0
+AVAILABILITY web
+AVAILABILITY api
+REPORT

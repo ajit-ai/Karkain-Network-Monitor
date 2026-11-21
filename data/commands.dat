@@ -1,0 +1,12 @@
+TARGET|web|example.com|80
+TARGET|api|api.example.com|443
+SAMPLE|web|1|12
+SAMPLE|web|1|15
+SAMPLE|web|0|0
+SAMPLE|api|1|20
+SAMPLE|api|1|22
+SAMPLE|api|1|19
+SAMPLE|api|0|0
+AVAILABILITY|web
+AVAILABILITY|api
+REPORT

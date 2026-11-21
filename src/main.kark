@@ -1,0 +1,129 @@
+// Karkain Network Monitor - first functional slice.
+// Records supplied probe results and computes real availability from them.
+// NO real network measurement is performed: samples come from commands.dat.
+
+func put_record(state, rec) {
+    if (rec == "") { return state }
+    let f = split(rec, "|")
+    let key = f[0] + "|" + f[1]
+    let out = []
+    let replaced = 0
+    let i = 0
+    while (i < len(state)) {
+        let cur = state[i]
+        if (cur == "") {
+            push(out, cur)
+        } else {
+            let g = split(cur, "|")
+            let curkey = g[0] + "|" + g[1]
+            if (curkey == key) {
+                push(out, rec)
+                replaced = 1
+            } else {
+                push(out, cur)
+            }
+        }
+        i = i + 1
+    }
+    if (replaced == 0) { push(out, rec) }
+    return out
+}
+
+func put_sample(state, rec) {
+    let i = 0
+    while (i < len(state)) {
+        if (state[i] == rec) { return state }
+        i = i + 1
+    }
+    push(state, rec)
+    return state
+}
+
+func availability(state, name) {
+    let total = 0
+    let ok = 0
+    let i = 0
+    while (i < len(state)) {
+        let f = split(state[i], "|")
+        if (f[0] == "SAMPLE") {
+            if (f[1] == name) {
+                total = total + 1
+                if (int(f[2]) == 1) { ok = ok + 1 }
+            }
+        }
+        i = i + 1
+    }
+    if (total == 0) { return 0 }
+    return (ok * 100) / total
+}
+
+func report(state) {
+    let n = 0
+    let i = 0
+    while (i < len(state)) {
+        let f = split(state[i], "|")
+        if (f[0] == "TARGET") {
+            print("REPORT " + f[1] + " availability=" + str(availability(state, f[1])) + "%")
+            n = n + 1
+        }
+        i = i + 1
+    }
+    print("REPORT targets=" + str(n))
+}
+
+func count_type(state, kind) {
+    let n = 0
+    let i = 0
+    while (i < len(state)) {
+        let f = split(state[i], "|")
+        if (f[0] == kind) { n = n + 1 }
+        i = i + 1
+    }
+    return n
+}
+
+func persist(path, lines) {
+    let out = ""
+    let i = 0
+    while (i < len(lines)) {
+        out = out + lines[i] + "\n"
+        i = i + 1
+    }
+    writeFile(path, out)
+}
+
+func main() {
+    let cmds = split(readFile("data/commands.dat"), "\n")
+    let state = split(readFile("data/state.dat"), "\n")
+    let report_text = ""
+    let i = 0
+    while (i < len(cmds)) {
+        let line = trim(cmds[i])
+        if (line != "") {
+            let f = split(line, "|")
+            let op = f[0]
+            if (op == "TARGET") {
+                let rec = "TARGET|" + f[1] + "|" + f[2] + "|" + f[3]
+                state = put_record(state, rec)
+                report_text = report_text + "TARGET " + f[1] + " " + f[2] + ":" + f[3] + "\n"
+            }
+            if (op == "SAMPLE") {
+                let rec = "SAMPLE|" + f[1] + "|" + f[2] + "|" + f[3]
+                state = put_sample(state, rec)
+                report_text = report_text + "SAMPLE " + f[1] + " ok=" + f[2] + " latency=" + f[3] + "\n"
+            }
+            if (op == "AVAILABILITY") {
+                print("AVAILABILITY " + f[1] + " " + str(availability(state, f[1])) + "%")
+                report_text = report_text + "AVAILABILITY " + f[1] + "\n"
+            }
+            if (op == "REPORT") {
+                report(state)
+                report_text = report_text + "REPORT\n"
+            }
+        }
+        i = i + 1
+    }
+    persist("data/state.dat", state)
+    persist("data/report.dat", split(report_text, "\n"))
+    print("NETWORK_MONITOR_OK targets=" + str(count_type(state, "TARGET")) + " samples=" + str(count_type(state, "SAMPLE")))
+}
